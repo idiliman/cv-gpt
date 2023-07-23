@@ -48,12 +48,12 @@ const InputForm = () => {
   const form = useForm<formSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      company: 'google',
-      name: 'idil',
-      about: 'hardworking',
-      education: 'diploma in it',
-      position: 'data analyst',
-      vibe: 'Professional',
+      company: '',
+      name: '',
+      about: '',
+      education: '',
+      position: '',
+      vibe: '',
     },
   });
 
