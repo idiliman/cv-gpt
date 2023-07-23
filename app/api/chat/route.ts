@@ -23,8 +23,14 @@ export async function POST(req: Request) {
         role: 'user',
         content: `Generate a ${vibe} cover letter, based on this context: ${about}. ${
           vibe === 'Funny' && "Make sure there is a joke in there and it's a little ridiculous."
-        }. Make sure the cover letter is concise and short. Here is the detail for the cover letter: position: ${position}, name:${name}, phone: 012 345 678 email: tiktok@mail.com, education:${education}, experience: internship instagram - 3 month, skills: sql , company name:${company}`,
+        }. Make sure the cover letter is concise and short. Here is the detail for the cover letter: position: ${position}, name:${name}, phone: 012 345 678 email: tiktok@mail.com, education:${education},  company name:${company}`,
       },
+      // {
+      //   role: 'user',
+      //   content: `Generate a ${vibe} cover letter, based on this context: ${about}. ${
+      //     vibe === 'Funny' && "Make sure there is a joke in there and it's a little ridiculous."
+      //   }. Make sure the cover letter is concise and short. Here is the detail for the cover letter: position: ${position}, name:${name}, phone: 012 345 678 email: tiktok@mail.com, education:${education}, experience: internship instagram - 3 month, skills: sql , company name:${company}`,
+      // },
     ],
   });
 
