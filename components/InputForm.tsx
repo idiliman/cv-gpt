@@ -5,25 +5,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from './ui/Card';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
+import { Textarea } from './ui/Textarea';
 
 import { VibeType } from '@/types';
-import { FormEvent, useRef, useState } from 'react';
-import * as z from 'zod';
+import { useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-
 import { useChat } from 'ai/react';
-import { Textarea } from './ui/Textarea';
 import { formSchema, formSchemaType } from '@/validators/form';
-import { useRouter } from 'next/navigation';
+
+import { toast } from '@/hooks/use-toast';
 
 let vibes: VibeType[] = ['Professional', 'Casual', 'Funny'];
 
 const InputForm = () => {
   const [body, setBody] = useState<formSchemaType | null>(null);
-  const pRef = useRef<HTMLParagraphElement>(null);
+  const cvRef = useRef<null | HTMLDivElement>(null);
 
-  const router = useRouter();
+  const scrollToCv = () => {
+    if (cvRef.current !== null) {
+      cvRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const { messages, reload, setMessages, setInput, handleSubmit, isLoading } = useChat({
     body: {
@@ -34,26 +37,28 @@ const InputForm = () => {
       position: body?.position,
       vibe: body?.vibe,
     },
+    onResponse() {
+      scrollToCv();
+    },
   });
-  console.log('🚀 ~ InputForm ~ messages:', messages);
 
-  const secondObject = messages.filter((obj) => obj.role === 'assistant')[0];
+  const lastMessage = messages[messages.length - 1];
+  const generatedCv = lastMessage?.role === 'assistant' ? lastMessage.content : null;
 
   const form = useForm<formSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      company: '',
-      name: '',
-      about: '',
-      education: '',
-      position: '',
+      company: 'google',
+      name: 'idil',
+      about: 'hardworking',
+      education: 'diploma in it',
+      position: 'data analyst',
       vibe: 'Professional',
     },
   });
 
   async function onSubmit(values: formSchemaType, e: any) {
     if (messages.length > 0) {
-      console.log('GOT MSG');
       setMessages([]);
       form.reset();
       handleSubmit(e);
@@ -66,11 +71,27 @@ const InputForm = () => {
     <div className='w-screen p-4'>
       <div className='grid grid-cols-1 md:grid-cols-3 gap-y-4 md:gap-x-4 py-6'>
         <output className='col-span-2 flex min-h-[80px] w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'>
-          <p className='text-center text-lg tracking-wide leading-loose ' ref={pRef}>
-            {secondObject?.content}
-          </p>
+          {generatedCv
+            ?.substring(generatedCv.indexOf('10') * generatedCv.length)
+            .split('10')
+            .map((cv) => {
+              return (
+                <div
+                  className='cursor-copy'
+                  ref={cvRef}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(cv);
+                    toast({
+                      title: 'CV copied to clipboard',
+                    });
+                  }}
+                  key={cv}
+                >
+                  <p className='text-center text-lg tracking-wide leading-loose'>{cv}</p>
+                </div>
+              );
+            })}
         </output>
-
         <Card className='w-full'>
           <CardContent>
             <Form {...form}>
