@@ -1,25 +1,26 @@
 'use client';
 
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/Form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { Card, CardContent } from './ui/Card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/Form';
+import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Textarea } from './ui/Textarea';
 
 import { VibeType } from '@/types';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useChat } from 'ai/react';
+import { useCompletion } from 'ai/react';
 import { formSchema, formSchemaType } from '@/validators/form';
-
-import { toast } from '@/hooks/use-toast';
+import { marked } from 'marked';
+import { toast } from 'sonner';
 
 let vibes: VibeType[] = ['Professional', 'Casual', 'Funny'];
 
-const InputForm = () => {
-  const [body, setBody] = useState<formSchemaType | null>(null);
+export default function InputForm() {
+  const [html, setHtml] = useState<string | Promise<string>>();
+  const [isPending, startTransition] = useTransition();
+
   const cvRef = useRef<null | HTMLDivElement>(null);
 
   const scrollToCv = () => {
@@ -28,22 +29,19 @@ const InputForm = () => {
     }
   };
 
-  const { messages, reload, setMessages, setInput, handleSubmit, isLoading } = useChat({
-    body: {
-      company: body?.company,
-      name: body?.name,
-      about: body?.about,
-      education: body?.education,
-      position: body?.position,
-      vibe: body?.vibe,
+  const { completion, handleSubmit, isLoading, setInput } = useCompletion({
+    api: '/api/completion',
+    headers: {
+      Authorization: process.env.OPENAI_API_KEY!,
     },
-    onResponse() {
-      scrollToCv();
+    credentials: 'same-origin',
+    onFinish: () => {
+      toast.success('CV generated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to generate CV, please try again');
     },
   });
-
-  const lastMessage = messages[messages.length - 1];
-  const generatedCv = lastMessage?.role === 'assistant' ? lastMessage.content : null;
 
   const form = useForm<formSchemaType>({
     resolver: zodResolver(formSchema),
@@ -53,162 +51,120 @@ const InputForm = () => {
       about: '',
       education: '',
       position: '',
-      vibe: '',
     },
   });
 
-  async function onSubmit(values: formSchemaType, e: any) {
-    if (messages.length > 0) {
-      setMessages([]);
-      form.reset();
-      handleSubmit(e);
-    }
-    await setBody(values);
-    handleSubmit(e);
-  }
+  useEffect(() => {
+    setHtml(marked(completion));
+  }, [completion]);
+
+  const company = form.watch('company');
+  const name = form.watch('name');
+  const about = form.watch('about');
+  const education = form.watch('education');
+  const position = form.watch('position');
+
+  useEffect(() => {
+    setInput(form.getValues() as any);
+  }, [company, name, about, education, position, setInput, form]);
 
   return (
-    <div className='w-screen p-4'>
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-y-4 md:gap-x-4 py-6'>
-        <output className='col-span-2 flex min-h-[80px] w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'>
-          {generatedCv
-            ?.substring(generatedCv.indexOf('10') * generatedCv.length)
-            .split('10')
-            .map((cv) => {
-              return (
-                <div
-                  className='cursor-copy'
-                  ref={cvRef}
-                  onClick={() => {
-                    navigator.clipboard?.writeText(cv);
-                    toast({
-                      title: 'CV copied to clipboard',
-                    });
-                  }}
-                  key={cv}
-                >
-                  <p className='text-center text-lg tracking-wide leading-loose'>{cv}</p>
-                </div>
-              );
-            })}
+    <div className='w-full h-full px-2 mx-auto md:px-4 lg:px-0'>
+      <div className='grid grid-cols-1 md:grid-cols-7 gap-y-4 md:gap-y-0 md:gap-x-4 h-[800px]'>
+        <output className='col-span-5 px-3 py-2 text-sm bg-white border rounded-md border-input ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'>
+          {
+            <div
+              className='space-y-4 leading-loose tracking-wide text-left cursor-copy'
+              dangerouslySetInnerHTML={{ __html: html || '' }}
+              onClick={() => {
+                navigator.clipboard?.writeText(completion);
+                toast.success('Copied to clipboard');
+              }}
+            />
+          }
         </output>
-        <Card className='w-full'>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-8'>
-                <FormField
-                  control={form.control}
-                  name='company'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Company Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder='Googlee..' {...field} />
-                      </FormControl>
+        <Card className='col-span-2 p-8'>
+          <Form {...form}>
+            <form onSubmit={handleSubmit} className='space-y-6'>
+              <FormField
+                control={form.control}
+                name='company'
+                render={({ field }) => (
+                  <FormItem className='w-full'>
+                    <FormLabel>Company Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder='Zes coffee..' {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='name'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder='...' {...field} />
+                    </FormControl>
 
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name='name'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Your Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder='zayn..' {...field} />
-                      </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='about'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>About</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder='Looking for part time....' className='resize-none' {...field} />
+                    </FormControl>
 
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name='about'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>About me</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder='Tell us a little bit about yourself'
-                          className='resize-none'
-                          value={field.value}
-                          onChange={(e) => {
-                            setInput(e.target.value);
-                            field.onChange(e.target.value);
-                          }}
-                        />
-                      </FormControl>
-                      <FormDescription>Tell abit about yourself</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name='position'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Position</FormLabel>
-                      <FormControl>
-                        <Input placeholder='Data Analyst..' {...field} />
-                      </FormControl>
-
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name='education'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Education</FormLabel>
-                      <FormControl>
-                        <Input placeholder='Master in..' {...field} />
-                      </FormControl>
-
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name='vibe'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Vibe</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='Set the cover letter vibe' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {vibes.map((vibe, i) => (
-                            <SelectItem key={i} value={vibe}>
-                              {vibe}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>Set the cover letter vibe.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type='submit' isLoading={isLoading}>
-                  Submit
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='position'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Position</FormLabel>
+                    <FormControl>
+                      <Input placeholder='Barista..' {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='education'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Education</FormLabel>
+                    <FormControl>
+                      <Input placeholder='Bachelor of...' {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button
+                type='submit'
+                isLoading={isLoading}
+                className='w-full'
+                disabled={!form.formState.isValid || isLoading}
+              >
+                Generate CV
+              </Button>
+            </form>
+          </Form>
         </Card>
       </div>
     </div>
   );
-};
-
-export default InputForm;
+}

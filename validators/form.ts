@@ -2,22 +2,19 @@ import { z } from 'zod';
 
 export const formSchema = z.object({
   company: z.string().min(2, {
-    message: 'Company Name must be at least 2 characters.',
+    message: 'Company Name is required.',
   }),
   name: z.string().min(2, {
-    message: 'Name must be at least 2 characters.',
+    message: 'Name is required.',
   }),
   about: z.string().min(2, {
-    message: 'About must be at least 2 characters.',
+    message: 'About is required.',
   }),
   position: z.string().min(2, {
-    message: 'Position must be at least 2 characters.',
+    message: 'Position is required.',
   }),
   education: z.string().min(2, {
-    message: 'Education must be at least 2 characters.',
-  }),
-  vibe: z.string().min(2, {
-    message: 'Select 1 vibe.',
+    message: 'Education is required.',
   }),
 });
 
