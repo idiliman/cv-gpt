@@ -29,17 +29,19 @@ export default function InputForm() {
     }
   };
 
-  const { completion, handleSubmit, isLoading, setInput } = useCompletion({
+  const { completion, handleSubmit, isLoading, setInput, error } = useCompletion({
     api: '/api/completion',
     headers: {
       Authorization: process.env.OPENAI_API_KEY!,
     },
     credentials: 'same-origin',
     onFinish: () => {
-      toast.success('CV generated successfully');
+      toast.success('CV generated successfully.');
     },
-    onError: (error: Error) => {
-      toast.error('Failed to generate CV, please try again');
+    onError: () => {
+      if (error?.message === 'Too many requests') {
+        return toast.error('Too many requests, please try again later.');
+      } else return toast.error('Failed to generate CV, please try again.');
     },
   });
 
